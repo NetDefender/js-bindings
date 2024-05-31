@@ -221,7 +221,7 @@ const converters = {
 const model = {
   id: 1,
   createDate: null,
-  firstName: "Daniel García",
+  firstName: "Daniel",
   total: 1000.34,
   textDate: '10/12/2085'
 };
@@ -284,21 +284,15 @@ const bindings = [{
 ];
 
 const proxyModel = createBindings(model, bindings);
-//proxyModel.firstName = "Daniel Tech";
-//proxyModel.createDate = new Date();
-//proxyModel.totalAmout = 18004;
 proxyModel.subscribe();
 
 document.getElementById('check').addEventListener('click', () => {
-  //document.getElementById('firstName').value="Pepe";
   console.log(proxyModel.model);
   console.log(proxyModel.errors());
-  //console.log(JSON.stringify(proxyModel.model));
 });
 
 document.getElementById('validate').addEventListener('click', () => {
   console.log(proxyModel.validateModel());
-  //console.log(proxyModel)
 });
 
 //proxyObject.dispose(); 
