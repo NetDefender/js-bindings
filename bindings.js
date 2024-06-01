@@ -218,81 +218,69 @@ const converters = {
   }
 }
 
-const model = {
-  id: 1,
-  createDate: null,
-  firstName: "Daniel",
-  total: 1000.34,
-  textDate: '10/12/2085'
-};
-
-const bindings = [{
-  name: "firstName",
-  control: document.getElementById('firstName'),
-  getter: o => o.firstName,
-  eventName: 'blur',
-  onChanged: function ({
-    prevValue,
-    value
-  }) {
-    console.log('onChanged', prevValue, value);
-  },
-  onValidateInput: function ({
-    prevModelValue,
-    control,
-    errorsInput
-  }) {
-    if (control.value === "A") {
-      errorsInput.push({
-        code: 'X-011',
-        message: 'One letter "A" is not allowed'
-      });
-      //control.value = null;
-    }
-    console.log('Errors on validateInput', errorsInput);
-  },
-  validateModel: function (model) {
-    console.log('validating model');
-  },
-  toControl: (c, v) => c.value = v,
-  toValue: c => c.value
-},
-{
-  name: "createDate",
-  control: document.getElementById('createDate'),
-  getter: o => o.createDate,
-  eventName: 'blur',
-  toControl: converters.OptionalDateToInputDateToConverter,
-  toValue: converters.InputDateToOptionalDateConverter
-},
-{
-  name: "total",
-  control: document.getElementById('total'),
-  getter: o => o.total,
-  eventName: 'blur',
-  toControl: (c, v) => c.value = v,
-  toValue: converters.InputNumberToOptionalNumberConverter
-},
-{
-  name: "textDate",
-  control: document.getElementById('textDate'),
-  getter: o => o.textDate,
-  eventName: 'blur',
-  toControl: (c, v) => c.value = v,
-  toValue: c => c.value,
+const formatters = {
+  euroFormatter: new Intl.NumberFormat('es-ES', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: 'true',
+    roundingMode: 'halfEven'
+  })
 }
-];
 
-const proxyModel = createBindings(model, bindings);
-proxyModel.subscribe();
+const parsers = {
 
-document.getElementById('check').addEventListener('click', () => {
-  console.log(proxyModel.model);
-  console.log(proxyModel.errors());
-});
+  euroParser: {
+    /**
+     * 
+     * @param {string} text - the string to parse 
+     * @returns 
+     */
+    parse: function (text) {
+      if (text === null || text.length === 0) {
+        return null;
+      }
+      const parsed = parseFloat(text.replace(/[.€ ]/g, '').replace(/[,]/g, '.'));
 
-document.getElementById('validate').addEventListener('click', () => {
-  console.log(proxyModel.validateModel());
-});
+      return isNaN(parsed) ? null : parsed;
+    }
+  }
+}
 
-//proxyObject.dispose(); 
+/**
+ * 
+ * @param {name: string, getter: function, controlId: string, eventName: string, onChanged: function, onValidateInput: function, validateModel: function} parameter
+ * @returns 
+ */
+function createTextBinding({ name, getter, controlId, eventName = 'blur', onChanged = null, onValidateInput = null, validateModel = null }) {
+  return {
+    name: name,
+    control: document.getElementById(controlId ?? name),
+    getter: getter,
+    eventName: eventName,
+    toControl: (c, v) => c.value = v,
+    toValue: c => c.value,
+    onChanged: onChanged,
+    onValidateInput: onValidateInput,
+    validateModel: validateModel,
+  }
+}
+
+/**
+ * 
+ * @param {name: string, getter: function, controlId: string, eventName: string, onChanged: function, onValidateInput: function, validateModel: function} parameter 
+ * @returns 
+ */
+function createEuroBinding({ name, getter, controlId, eventName = 'blur', onChanged = null, onValidateInput = null, validateModel = null }) {
+  return {
+    name: name,
+    control: document.getElementById(controlId ?? name),
+    getter: getter,
+    eventName: eventName,
+    toControl: (c, v) => c.value = formatters.euroFormatter.format(v),
+    toValue: c => parsers.euroParser.parse(c.value),
+    onChanged: onChanged,
+    onValidateInput: onValidateInput,
+    validateModel: validateModel,
+  }
+}

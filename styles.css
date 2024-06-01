@@ -1,0 +1,74 @@
+body {
+  background-color: #fdfdfd;
+  font-family: "Roboto", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1.title {
+  margin: 0 auto;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 400px;
+  margin: auto;
+  border: 1px solid #fdfdfd;
+  border-radius: 16px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  padding: 20px;
+}
+
+input {
+  width: 100%;
+  margin: 5px;
+  border: 1px solid lightgray;
+  height: 30px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-radius: 16px;
+  font-weight: 400;
+  line-height: 25.6px;
+  font-size: 16px;
+  font-style: normal;
+  box-sizing: border-box;
+}
+
+input:focus-visible {
+  border: 1px solid gray;
+  outline-color: lightgray;
+}
+
+input[data-input-date],
+input[data-input-euro] {
+  text-align: right;
+}
+
+button {
+  width: 100%;
+  margin: 5px;
+  font-family: "Roboto", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+  height: 30px;
+  border: 1px solid lightgray;
+  border-radius: 16px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-radius: 16px;
+  outline-width: 0px;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+button:hover {
+  outline-color: lightgray;
+  background-color: rgb(225, 225, 225);
+}
