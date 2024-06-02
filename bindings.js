@@ -36,6 +36,8 @@ function createBindings(model, bindings) {
   if (!Array.isArray(bindings)) {
     bindings = [bindings];
   }
+  const bindingEventName = 'focusout';
+  const focusEventName = 'focusin';
 
   let isDisposed = false;
 
@@ -46,6 +48,7 @@ function createBindings(model, bindings) {
       name: binding.name,
       control: binding.control,
       supressBinding: false,
+      onFocused: binding.onFocused,
       onChanging: binding.onChanging,
       onChanged: binding.onChanged,
       onValidateInput: binding.onValidateInput,
@@ -59,29 +62,31 @@ function createBindings(model, bindings) {
         this.toControl(this.control, newValue);
         this.supressBinding = false;
       },
-      eventName: binding.eventName,
       toControl: binding.toControl,
       toValue: binding.toValue,
-      subscribe: function () {
-        this.unsubscribe();
-        binding.control.addEventListener(binding.eventName, controlEventHandlerToken);
-      },
-      unsubscribe: function () {
-        binding.control.removeEventListener(binding.eventName, controlEventHandlerToken);
-      },
       errors: [],
       errorsInput: [],
       errorsModel: [],
+      subscribe: function () {
+        this.unsubscribe();
+        binding.control.addEventListener(bindingEventName, controlBindingEventHandler);
+        binding.control.addEventListener(focusEventName, controlFocusEventHandler);
+      },
+      unsubscribe: function () {
+        binding.control.removeEventListener(bindingEventName, controlBindingEventHandler);
+        binding.control.removeEventListener(focusEventName, controlFocusEventHandler);
+      },
       dispose: function () {
         this.errors.length = 0;
         this.unsubscribe();
       }
     }; //bindingInstance
 
-    const controlEventHandlerToken = function controlEventHandler(e) {
+    const controlBindingEventHandler = function (e) {
       if (bindingInstance.supressBinding) {
         return;
       }
+
       bindingInstance.errorsInput.length = 0;
       if (bindingInstance.onValidateInput) {
         const prevModelValue = bindingInstance.getValue();
@@ -98,10 +103,17 @@ function createBindings(model, bindings) {
           return;
         }
       }
-      const proposedValue = bindingInstance.toValue(bindingInstance.control);
-      //console.log(controlValue);
-      setter(model, proposedValue, bindingInstance.onChanging, bindingInstance.onChanged);
-    } //vcontrolEventHandler
+      const newalue = bindingInstance.toValue(bindingInstance.control);
+      setter(model, newalue, bindingInstance.onChanging, bindingInstance.onChanged);
+      bindingInstance.toControl(bindingInstance.control, newalue);
+    }
+
+    const controlFocusEventHandler = function (e) {
+      if (bindingInstance.control === e.target && bindingInstance.onFocused) {
+        //console.log('focusin', e.target.id);
+        bindingInstance.onFocused(e.target, bindingInstance.getValue());
+      }
+    }
 
     bindingMap.set(binding.name, bindingInstance);
   }); // forEach
@@ -176,46 +188,11 @@ function createBindings(model, bindings) {
     }
   }); // proxy
 
-  //proxy.subscribe();
   bindings.forEach(binding => {
     proxy[binding.name] = binding.getter(model);
   });
 
-
   return proxy;
-}
-
-const converters = {
-  InputNumberToOptionalNumberConverter: function (c) {
-    let proposed = parseFloat(c.value);
-    if (isNaN(proposed)) {
-      proposed = null;
-    }
-    return proposed;
-  },
-  InputDateToOptionalDateConverter: function (c) {
-    let proposed = null;
-    try {
-      proposed = new Date(c.value);
-    } catch (error) {
-      proposed = null;
-    }
-    return proposed;
-  },
-  OptionalDateToInputDateToConverter: function (c, v) {
-    let proposed = null;
-
-    try {
-      if (v instanceof String || v instanceof Number) {
-        proposed = new Date(v);
-      } else if (v instanceof Date) {
-        proposed = v;
-      }
-    } catch (error) {
-      proposed = null;
-    }
-    c.valueAsDate = proposed;
-  }
 }
 
 const formatters = {
@@ -225,16 +202,17 @@ const formatters = {
     maximumFractionDigits: 2,
     useGrouping: 'true',
     roundingMode: 'halfEven'
-  })
+  }),
+
 }
 
 const parsers = {
 
   euroParser: {
     /**
-     * 
+     * Parse a number in the format "123.456,78" with optional '€' symbol
      * @param {string} text - the string to parse 
-     * @returns 
+     * @returns {number?}
      */
     parse: function (text) {
       if (text === null || text.length === 0) {
@@ -249,15 +227,14 @@ const parsers = {
 
 /**
  * 
- * @param {name: string, getter: function, controlId: string, eventName: string, onChanged: function, onValidateInput: function, validateModel: function} parameter
+ * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateInput: function, validateModel: function} parameter
  * @returns 
  */
-function createTextBinding({ name, getter, controlId, eventName = 'blur', onChanged = null, onValidateInput = null, validateModel = null }) {
+function createTextBinding({ name, getter, controlId, onChanged = null, onValidateInput = null, validateModel = null }) {
   return {
     name: name,
     control: document.getElementById(controlId ?? name),
     getter: getter,
-    eventName: eventName,
     toControl: (c, v) => c.value = v,
     toValue: c => c.value,
     onChanged: onChanged,
@@ -268,15 +245,15 @@ function createTextBinding({ name, getter, controlId, eventName = 'blur', onChan
 
 /**
  * 
- * @param {name: string, getter: function, controlId: string, eventName: string, onChanged: function, onValidateInput: function, validateModel: function} parameter 
+ * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateInput: function, validateModel: function} parameter 
  * @returns 
  */
-function createEuroBinding({ name, getter, controlId, eventName = 'blur', onChanged = null, onValidateInput = null, validateModel = null }) {
+function createEuroBinding({ name, getter, controlId, onChanged = null, onValidateInput = null, validateModel = null }) {
   return {
     name: name,
     control: document.getElementById(controlId ?? name),
     getter: getter,
-    eventName: eventName,
+    onFocused: (c, v) => c.value = c.value?.replace(/[.€]/, ''),
     toControl: (c, v) => c.value = formatters.euroFormatter.format(v),
     toValue: c => parsers.euroParser.parse(c.value),
     onChanged: onChanged,

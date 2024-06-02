@@ -4,7 +4,7 @@ const model = {
     id: 1,
     createDate: null,
     firstName: "Daniel",
-    total: 1000.34,
+    total: 11000.34,
 };
 
 const bindings = [];
