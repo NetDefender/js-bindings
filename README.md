@@ -2,41 +2,37 @@
 
 
 ```javascript
-const bindings = [{
-  name: "firstName",
-  control: document.getElementById('firstName'),
-  getter: o => o.firstName,
-  eventName: 'blur',
-  onChanged: function ({
-    prevValue,
-    value
-  }) {
-    console.log('onChanged', prevValue, value);
-  },
-  onValidateInput: function ({
-    prevModelValue,
-    control,
-    errorsInput
-  }) {
-    if (control.value === "A") {
-      errorsInput.push({
-        code: 'X-011',
-        message: 'One letter "A" is not allowed'
-      });
-      //control.value = null;
+const model = {
+    id: 1,
+    createDate: null,
+    firstName: "Daniel",
+    total: 11000.34,
+};
+
+const bindings = [];
+
+bindings.push(createTextBinding({
+    name: 'firstName', getter: o => o.firstName, onValidateModel: (p) => {
+        console.log(`validating model ${JSON.stringify(p.modelCopy)}, with value ${p.value}`);
+        if (p.value === 'A') {
+            p.errorsModel.push({ code: 'X-011', message: 'One letter "A" is not allowed' });
+        }
     }
-    console.log('Errors on validateInput', errorsInput);
-  },
-  validateModel: function (model) {
-    console.log('validating model');
-  },
-  toControl: (c, v) => c.value = v,
-  toValue: c => c.value
-},
-];
+}));
+bindings.push(createTextBinding({ name: 'createDate', getter: o => o.createDate }));
+bindings.push(createEuroBinding({ name: 'total', getter: o => o.total }));
 
 const proxyModel = createBindings(model, bindings);
 proxyModel.subscribe();
+
+document.getElementById('check').addEventListener('click', () => {
+    console.log(proxyModel.model);
+    console.log(proxyModel.errors());
+});
+
+document.getElementById('validate').addEventListener('click', () => {
+    console.log(proxyModel.validate());
+});
 ```
 then when you set a property value, the control associated is updated with the format specified by the function `toControl`
 `toValue` converts the control value to the property format
@@ -45,10 +41,10 @@ then when you set a property value, the control associated is updated with the f
 proxyModel.firstName = "Perico";
 ```
 
-when you call `validateModel`, a list of errors are returned
+when you call `validate`, a list of errors are returned
 
 ```javascript
-const errors = proxyModel.validateModel()
+const errors = proxyModel.validate()
 ```
 
 you can access the `errors` in other point of your code 
@@ -62,17 +58,4 @@ when you are done you can dispose the proxy object
 
 ```javascript
 proxyObject.dispose()
-```
-
-a most basic binding with a text input without validation would be something like
-
-```javascript
-const bindings = [{
-  name: "comment",
-  control: document.getElementById('comment'),
-  getter: o => o.comment,
-  eventName: 'blur',
-  toControl: (c, v) => c.value = v,
-  toValue: c => c.value,
-}];
 ```
