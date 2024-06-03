@@ -51,10 +51,12 @@ function createBindings(model, bindings) {
       onFocused: binding.onFocused,
       onChanging: binding.onChanging,
       onChanged: binding.onChanged,
-      onValidateInput: binding.onValidateInput,
-      validateModel: binding.validateModel,
+      onValidateModel: binding.onValidateModel,
       getValue: function () {
         return binding.getter(model);
+      },
+      getReadOlnyModel: function () {
+        return Object.freeze(model);
       },
       setValue: function (newValue) {
         this.supressBinding = true;
@@ -65,7 +67,6 @@ function createBindings(model, bindings) {
       toControl: binding.toControl,
       toValue: binding.toValue,
       errors: [],
-      errorsInput: [],
       errorsModel: [],
       subscribe: function () {
         this.unsubscribe();
@@ -86,34 +87,16 @@ function createBindings(model, bindings) {
       if (bindingInstance.supressBinding) {
         return;
       }
-
-      bindingInstance.errorsInput.length = 0;
-      if (bindingInstance.onValidateInput) {
-        const prevModelValue = bindingInstance.getValue();
-        const validationParameters = {
-          prevModelValue,
-          control: bindingInstance.control,
-          errorsInput: []
-        }
-        bindingInstance.onValidateInput(validationParameters);
-        if (validationParameters.errorsInput.length) {
-          const newErrorsInput = [...validationParameters.errorsInput];
-          newErrorsInput.forEach(error => error.bindingName = bindingInstance.name);
-          bindingInstance.errorsInput = newErrorsInput;
-          return;
-        }
-      }
       const newalue = bindingInstance.toValue(bindingInstance.control);
       setter(model, newalue, bindingInstance.onChanging, bindingInstance.onChanged);
       bindingInstance.toControl(bindingInstance.control, newalue);
-    }
+    } // controlBindingEventHandler
 
     const controlFocusEventHandler = function (e) {
       if (bindingInstance.control === e.target && bindingInstance.onFocused) {
-        //console.log('focusin', e.target.id);
         bindingInstance.onFocused(e.target, bindingInstance.getValue());
       }
-    }
+    } // controlFocusEventHandler
 
     bindingMap.set(binding.name, bindingInstance);
   }); // forEach
@@ -138,7 +121,6 @@ function createBindings(model, bindings) {
   function errors() {
     const errors = [];
     bindingMap.forEach(value => {
-      Array.prototype.push.apply(errors, [...value.errorsInput]);
       Array.prototype.push.apply(errors, [...value.errorsModel]);
     })
     return errors;
@@ -146,15 +128,25 @@ function createBindings(model, bindings) {
 
   function clearErrors(filter = null) {
     bindingMap.forEach(value => {
-      value.errorsInput = filter ? value.errorsInput.filter(filter) : [];
       value.errorsModel = filter ? value.errorsModel.filter(filter) : [];
     })
   } // clearErrors
 
-  function validateModel() {
-    bindingMap.forEach(value => {
-      if (value.validateModel) {
-        value.validateModel(model);
+  function validate() {
+    bindingMap.forEach(binding => {
+      binding.errorsModel.length = 0;
+      if (binding.onValidateModel) {
+        const validationParameters = {
+          value: binding.getValue(),
+          model: binding.getReadOlnyModel(),
+          errorsModel: []
+        }
+        binding.onValidateModel(validationParameters);
+        validationParameters.errorsModel.forEach(error => {
+          error.bindingName = binding.name;
+          error.control = Object.freeze(binding.control);
+        });
+        binding.errorsModel = [...validationParameters.errorsModel];
       }
     })
     return errors();
@@ -170,7 +162,8 @@ function createBindings(model, bindings) {
     ['model', model],
     ['unsubscribe', unsubscribe],
     ['errors', errors],
-    ['validateModel', validateModel],
+    ['validate', validate],
+    ['clearErrors', clearErrors],
     ['toJSON', serialize]
   ]);
 
@@ -227,10 +220,10 @@ const parsers = {
 
 /**
  * 
- * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateInput: function, validateModel: function} parameter
+ * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
  * @returns 
  */
-function createTextBinding({ name, getter, controlId, onChanged = null, onValidateInput = null, validateModel = null }) {
+function createTextBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
   return {
     name: name,
     control: document.getElementById(controlId ?? name),
@@ -238,17 +231,16 @@ function createTextBinding({ name, getter, controlId, onChanged = null, onValida
     toControl: (c, v) => c.value = v,
     toValue: c => c.value,
     onChanged: onChanged,
-    onValidateInput: onValidateInput,
-    validateModel: validateModel,
+    onValidateModel: onValidateModel,
   }
 }
 
 /**
  * 
- * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateInput: function, validateModel: function} parameter 
+ * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
  * @returns 
  */
-function createEuroBinding({ name, getter, controlId, onChanged = null, onValidateInput = null, validateModel = null }) {
+function createEuroBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
   return {
     name: name,
     control: document.getElementById(controlId ?? name),
@@ -257,7 +249,6 @@ function createEuroBinding({ name, getter, controlId, onChanged = null, onValida
     toControl: (c, v) => c.value = formatters.euroFormatter.format(v),
     toValue: c => parsers.euroParser.parse(c.value),
     onChanged: onChanged,
-    onValidateInput: onValidateInput,
-    validateModel: validateModel,
+    onValidateModel: onValidateModel,
   }
 }
