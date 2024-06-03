@@ -8,8 +8,10 @@ const model = {
 };
 
 const bindings = [];
+
 bindings.push(createTextBinding({
     name: 'firstName', getter: o => o.firstName, onValidateModel: (p) => {
+        console.log(`validating model ${JSON.stringify(p.modelCopy)}, with value ${p.value}`);
         if (p.value === 'A') {
             p.errorsModel.push({ code: 'X-011', message: 'One letter "A" is not allowed' });
         }

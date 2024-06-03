@@ -55,8 +55,8 @@ function createBindings(model, bindings) {
       getValue: function () {
         return binding.getter(model);
       },
-      getReadOlnyModel: function () {
-        return Object.freeze(model);
+      getModelCopy: function () {
+        return JSON.parse(JSON.stringify(model));
       },
       setValue: function (newValue) {
         this.supressBinding = true;
@@ -138,13 +138,13 @@ function createBindings(model, bindings) {
       if (binding.onValidateModel) {
         const validationParameters = {
           value: binding.getValue(),
-          model: binding.getReadOlnyModel(),
+          modelCopy: binding.getModelCopy(),
           errorsModel: []
         }
         binding.onValidateModel(validationParameters);
         validationParameters.errorsModel.forEach(error => {
           error.bindingName = binding.name;
-          error.control = Object.freeze(binding.control);
+          error.control = binding.control;
         });
         binding.errorsModel = [...validationParameters.errorsModel];
       }
@@ -156,7 +156,7 @@ function createBindings(model, bindings) {
     return this.model;
   }
 
-  const propertyMap = new Map([
+  const reservedMembersMap = new Map([
     ['dispose', dispose],
     ['subscribe', subscribe],
     ['model', model],
@@ -170,8 +170,8 @@ function createBindings(model, bindings) {
   const proxy = new Proxy(model, {
     get(target, property) {
       const propertyName = property.toString();
-      if (propertyMap.has(propertyName)) {
-        return propertyMap.get(propertyName);
+      if (reservedMembersMap.has(propertyName)) {
+        return reservedMembersMap.get(propertyName);
       }
       return bindingMap.get(propertyName).getValue();
     },
