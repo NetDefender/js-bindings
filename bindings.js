@@ -38,6 +38,7 @@ function createBindings(model, bindings) {
   }
   const bindingEventName = 'focusout';
   const focusEventName = 'focusin';
+  const beforeInputEventName = 'beforeinput';
 
   let isDisposed = false;
 
@@ -48,6 +49,7 @@ function createBindings(model, bindings) {
       name: binding.name,
       control: binding.control,
       supressBinding: false,
+      onBeforeInput: binding.onBeforeInput,
       onFocused: binding.onFocused,
       onChanging: binding.onChanging,
       onChanged: binding.onChanged,
@@ -72,10 +74,12 @@ function createBindings(model, bindings) {
         this.unsubscribe();
         binding.control.addEventListener(bindingEventName, controlBindingEventHandler);
         binding.control.addEventListener(focusEventName, controlFocusEventHandler);
+        binding.control.addEventListener(beforeInputEventName, controlBeforeInputEventHandler);
       },
       unsubscribe: function () {
         binding.control.removeEventListener(bindingEventName, controlBindingEventHandler);
         binding.control.removeEventListener(focusEventName, controlFocusEventHandler);
+        binding.control.removeEventListener(beforeInputEventName, controlBeforeInputEventHandler);
       },
       dispose: function () {
         this.errors.length = 0;
@@ -97,6 +101,40 @@ function createBindings(model, bindings) {
         bindingInstance.onFocused(e.target, bindingInstance.getValue());
       }
     } // controlFocusEventHandler
+
+    /*
+      insertText, deleteContentBackward, deleteContentForward, insertFromPaste, and formatBold
+    */
+    const controlBeforeInputEventHandler = function (e) {
+      if (bindingInstance.onBeforeInput) {
+        const beforeInputParameters = {
+          cancel: false,
+          text: e.target.value,
+          rangeText: e.data,
+          type: e.inputType,
+          selectedText: e.target.value?.substring(e.target.selectionStart, e.target.selectionEnd),
+          selectionStart: e.target.selectionStart,
+          selectionEnd: e.target.selectionEnd,
+        };
+
+        bindingInstance.onBeforeInput(beforeInputParameters);
+
+        if (beforeInputParameters.cancel) {
+          e.preventDefault();
+          return;
+        }
+
+        if (e.data != beforeInputParameters.rangeText) {
+          e.preventDefault();
+          e.target.setRangeText(replacement = beforeInputParameters.rangeText);
+        }
+
+        if (e.target.selectionStart != beforeInputParameters.selectionStart
+          || e.target.selectionEnd != beforeInputParameters.selectionEnd) {
+          e.target.setSelectionRange(beforeInputParameters.selectionStart, beforeInputParameters.selectionEnd, 'forward');
+        }
+      }
+    } // controlBeforeInputEventHandler
 
     bindingMap.set(binding.name, bindingInstance);
   }); // forEach
@@ -228,6 +266,9 @@ function createTextBinding({ name, getter, controlId, onChanged = null, onValida
     name: name,
     control: document.getElementById(controlId ?? name),
     getter: getter,
+    onBeforeInput: (p) => {
+
+    },
     toControl: (c, v) => c.value = v,
     toValue: c => c.value,
     onChanged: onChanged,
@@ -246,6 +287,40 @@ function createEuroBinding({ name, getter, controlId, onChanged = null, onValida
     control: document.getElementById(controlId ?? name),
     getter: getter,
     onFocused: (c, v) => c.value = c.value?.replace(/[.€]/, ''),
+    onBeforeInput: (p) => {
+      /*
+          { 
+            cancel,
+            text,
+            type,
+            selectedText
+            selectionStart,
+            selectionEnd
+          }
+      */
+
+      if (p.rangeText === '.' || p.rangeText === ',') {
+        if (p.text.indexOf(',') !== -1 && (!p.selectedText || p.selectedText.indexOf(',') === -1)) {
+          p.cancel = true;
+        }
+        else {
+          p.rangeText = ',';
+          p.selectionStart += 1;
+          p.selectionEnd = p.selectionStart;
+        }
+        return;
+      }
+
+      if (p.rangeText && !p.rangeText.match(/\d+/)) {
+        p.cancel = true;
+        return;
+      }
+
+      // if (p.rangeText) {
+      //   const caret = p.selectionStart;
+
+      // }
+    },
     toControl: (c, v) => c.value = formatters.euroFormatter.format(v),
     toValue: c => parsers.euroParser.parse(c.value),
     onChanged: onChanged,
