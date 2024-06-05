@@ -4,7 +4,7 @@ const model = {
     id: 1,
     createDate: null,
     firstName: "Daniel",
-    total: 0,
+    total: null,
 };
 
 const bindings = [];
@@ -17,7 +17,7 @@ bindings.push(createTextBinding({
         }
     }
 }));
-bindings.push(createTextBinding({ name: 'createDate', getter: o => o.createDate }));
+bindings.push(createDateBinding({ name: 'createDate', getter: o => o.createDate }));
 bindings.push(createEuroBinding({ name: 'total', getter: o => o.total }));
 
 const proxyModel = createBindings(model, bindings);
@@ -26,9 +26,7 @@ proxyModel.subscribe();
 const totalControl = document.getElementById('total');
 
 document.getElementById('check').addEventListener('click', () => {
-    console.log(totalControl.selectionStart, totalControl.selectionEnd);
-    // console.log(proxyModel.model);
-    // console.log(proxyModel.errors());
+    console.log(proxyModel.model);
 });
 
 document.getElementById('validate').addEventListener('click', () => {

@@ -131,7 +131,7 @@ function createBindings(model, bindings) {
 
         if (e.target.selectionStart != beforeInputParameters.selectionStart
           || e.target.selectionEnd != beforeInputParameters.selectionEnd) {
-          e.target.setSelectionRange(beforeInputParameters.selectionStart, beforeInputParameters.selectionEnd, 'forward');
+          e.target.setSelectionRange(beforeInputParameters.selectionStart, beforeInputParameters.selectionEnd/*, 'forward'*/);
         }
       }
     } // controlBeforeInputEventHandler
@@ -234,7 +234,25 @@ const formatters = {
     useGrouping: 'true',
     roundingMode: 'halfEven'
   }),
+  dateFormat: /^(?<day>\d{1,2})\/(?<month>\d{1,2})\/(?<year>\d{4})$/,
+  dateFormatter: {
+    format(dateString) {
+      if (dateString === null || dateString.length === 0) {
+        return null;
+      }
 
+      const match = dateString.match(formatters.dateFormat);
+
+      if (!match) {
+        return null;
+      }
+      const date = new Date(`${match.groups.year}-${match.groups.month}-${match.groups.day}`);
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    }
+  },
 }
 
 const parsers = {
@@ -253,6 +271,17 @@ const parsers = {
 
       return isNaN(parsed) ? null : parsed;
     }
+  },
+
+  dateParser: {
+    /**
+     * Parse a date in the format "dd/MM/yyyy" 
+     * @param {string} text - the string to parse 
+     * @returns {string?}
+     */
+    parse: function (text) {
+      return formatters.dateFormatter.format(text);
+    }
   }
 }
 
@@ -266,6 +295,7 @@ function createTextBinding({ name, getter, controlId, onChanged = null, onValida
     name: name,
     control: document.getElementById(controlId ?? name),
     getter: getter,
+    onFocused: (c, v) => c.select(),
     onBeforeInput: (p) => {
 
     },
@@ -286,24 +316,22 @@ function createEuroBinding({ name, getter, controlId, onChanged = null, onValida
     name: name,
     control: document.getElementById(controlId ?? name),
     getter: getter,
-    onFocused: (c, v) => c.value = c.value?.replace(/[.€]/, ''),
+    onFocused: (c, v) => {
+      c.value = c.value?.replace(/[.€]/, '');
+      c.select();
+    },
     onBeforeInput: (p) => {
-      /*
-          { 
-            cancel,
-            text,
-            type,
-            selectedText
-            selectionStart,
-            selectionEnd
-          }
-      */
+      // if not type nothing let it go
+      if (!p.rangeText) {
+        return;
+      }
 
+      // if dot or comma, check if there is already one
       if (p.rangeText === '.' || p.rangeText === ',') {
         if (p.text.indexOf(',') !== -1 && (!p.selectedText || p.selectedText.indexOf(',') === -1)) {
           p.cancel = true;
         }
-        else {
+        else if (p.rangeText === '.') {
           p.rangeText = ',';
           p.selectionStart += 1;
           p.selectionEnd = p.selectionStart;
@@ -311,18 +339,56 @@ function createEuroBinding({ name, getter, controlId, onChanged = null, onValida
         return;
       }
 
-      if (p.rangeText && !p.rangeText.match(/\d+/)) {
+      // if not digit, cancel
+      if (!p.rangeText.match(/\d+/)) {
         p.cancel = true;
         return;
       }
 
-      // if (p.rangeText) {
-      //   const caret = p.selectionStart;
-
-      // }
+      // here is digit only, check if we have more than 2 decimals
+      const commaIndex = p.text.indexOf(',');
+      if (commaIndex != -1) {
+        if (p.selectedText.indexOf(',') === -1 && p.selectionStart > commaIndex) {
+          const decimalsConsumed = (p.selectionStart - (commaIndex + 1)) + (p.text.length - p.selectionEnd);
+          if (decimalsConsumed >= 2) {
+            p.cancel = true;
+          }
+        }
+      }
     },
     toControl: (c, v) => c.value = formatters.euroFormatter.format(v),
     toValue: c => parsers.euroParser.parse(c.value),
+    onChanged: onChanged,
+    onValidateModel: onValidateModel,
+  }
+}
+
+/**
+ * 
+ * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
+ * @returns 
+ */
+function createDateBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
+
+  const dateFormat = /^(?<day>\d{1,2})\/(?<month>\d{1,2})\/(?<year>\d{4})$/;
+
+  return {
+    name: name,
+    control: document.getElementById(controlId ?? name),
+    getter: getter,
+    onFocused: (c, v) => {
+      c.select();
+    },
+    onBeforeInput: (p) => {
+      // if not type nothing let it go
+      if (!p.rangeText) {
+        return;
+      }
+
+      // TODO: implement date validation
+    },
+    toControl: (c, v) => c.value = formatters.dateFormatter.format(v),
+    toValue: c => parsers.dateParser.parse(c.value),
     onChanged: onChanged,
     onValidateModel: onValidateModel,
   }
