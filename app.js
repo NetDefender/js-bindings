@@ -5,6 +5,7 @@ const model = {
     createDate: null,
     firstName: "Daniel",
     total: null,
+    nativeDate: new Date('2050-05-6'),
 };
 
 const bindings = [];
@@ -17,13 +18,14 @@ bindings.push(createTextBinding({
         }
     }
 }));
-bindings.push(createDateBinding({ name: 'createDate', getter: o => o.createDate }));
 bindings.push(createEuroBinding({ name: 'total', getter: o => o.total }));
+bindings.push(createDateStringBinding({ name: 'createDate', getter: o => o.createDate }));
+bindings.push(createDateBinding({ name: 'nativeDate', getter: o => o.nativeDate }));
 
 const proxyModel = createBindings(model, bindings);
 proxyModel.subscribe();
 
-const totalControl = document.getElementById('total');
+const nativeDateControl = document.getElementById('nativeDate');
 
 document.getElementById('check').addEventListener('click', () => {
     console.log(proxyModel.model);
@@ -32,3 +34,15 @@ document.getElementById('check').addEventListener('click', () => {
 document.getElementById('validate').addEventListener('click', () => {
     console.log(proxyModel.validate());
 });
+
+// nativeDateControl.addEventListener('input', (e) => {
+//     if (e.target.value) {
+//         const nextCharacter = e.target.value.substring(e.target.selectionStart, e.target.selectionStart + 1);
+//         console.log(nextCharacter);
+//         if (nextCharacter === '/') {
+//             // p.rangeText = `${p.rangeText}/`;
+//             // p.selectionStart += 1;
+//             // p.selectionEnd = p.selectionStart;
+//         }
+//     }
+// })

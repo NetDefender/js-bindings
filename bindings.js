@@ -235,19 +235,18 @@ const formatters = {
     roundingMode: 'halfEven'
   }),
   dateFormat: /^(?<day>\d{1,2})\/(?<month>\d{1,2})\/(?<year>\d{4})$/,
-  dateFormatter: {
+  dateStringFormatter: {
     format(dateString) {
-      if (dateString === null || dateString.length === 0) {
+      const date = parsers.dateParser.parse(dateString);
+      if (date === null) {
         return null;
       }
-
-      const match = dateString.match(formatters.dateFormat);
-
-      if (!match) {
-        return null;
-      }
-      const date = new Date(`${match.groups.year}-${match.groups.month}-${match.groups.day}`);
-      if (isNaN(date.getTime())) {
+      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    }
+  },
+  dateFormatter: {
+    format(date) {
+      if (!(date instanceof Date) || isNaN(date.getTime())) {
         return null;
       }
       return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
@@ -256,7 +255,6 @@ const formatters = {
 }
 
 const parsers = {
-
   euroParser: {
     /**
      * Parse a number in the format "123.456,78" with optional '€' symbol
@@ -272,17 +270,29 @@ const parsers = {
       return isNaN(parsed) ? null : parsed;
     }
   },
-
   dateParser: {
     /**
-     * Parse a date in the format "dd/MM/yyyy" 
+     * Parse a number in the format "123.456,78" with optional '€' symbol
      * @param {string} text - the string to parse 
-     * @returns {string?}
+     * @returns {date?}
      */
     parse: function (text) {
-      return formatters.dateFormatter.format(text);
+      if (text === null || text.length === 0) {
+        return null;
+      }
+
+      const match = text.match(formatters.dateFormat);
+
+      if (!match) {
+        return null;
+      }
+      const date = new Date(`${match.groups.year}-${match.groups.month}-${match.groups.day}`);
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      return date;
     }
-  }
+  },
 }
 
 /**
@@ -368,9 +378,7 @@ function createEuroBinding({ name, getter, controlId, onChanged = null, onValida
  * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
  * @returns 
  */
-function createDateBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
-
-  const dateFormat = /^(?<day>\d{1,2})\/(?<month>\d{1,2})\/(?<year>\d{4})$/;
+function createDateStringBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
 
   return {
     name: name,
@@ -384,8 +392,85 @@ function createDateBinding({ name, getter, controlId, onChanged = null, onValida
       if (!p.rangeText) {
         return;
       }
-
       // TODO: implement date validation
+    },
+    toControl: (c, v) => c.value = formatters.dateStringFormatter.format(v),
+    toValue: c => formatters.dateStringFormatter.format(c.value),
+    onChanged: onChanged,
+    onValidateModel: onValidateModel,
+  }
+}
+
+
+/**
+ * 
+ * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
+ * @returns 
+ */
+function createDateBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
+
+  return {
+    name: name,
+    control: document.getElementById(controlId ?? name),
+    getter: getter,
+    onFocused: (c, v) => {
+      c.selectionStart = 0;
+      c.selectionEnd = 2;
+    },
+    onBeforeInput: (p) => {
+      // if not type nothing let it go
+      if (!p.rangeText) {
+        return;
+      }
+
+      if (p.selectionStart !== p.selectionEnd) {
+        return;
+      }
+
+      const separators = getSeparatorIndexes(p.text);
+      console.log(p.text, separators, p.selectionStart);
+      // TODO: implement date validation
+
+      if (p.rangeText === '/') {
+        if (p.selectionStart === separators.firstIndex) {
+          p.rangeText = '';
+          p.selectionStart += 1;
+          p.selectionEnd = separators.secondIndex ?? p.selectionStart;
+        } else if (p.selectionStart === separators.secondIndex) {
+          p.rangeText = '';
+          p.selectionStart += 1;
+          p.selectionEnd = p.selectionStart + p.text.length - separators.secondIndex;
+        }
+      }
+
+      /**
+       * 
+       * @param {string?} text 
+       * @returns {{firstIndex: number?, secondIndex: number?}}
+       */
+      function getSeparatorIndexes(text) {
+        const separators = {
+          firstIndex: null,
+          secondIndex: null
+        }
+        if (text === null || text.length === 0) {
+          return separators;
+        }
+        const firstIndex = text.indexOf('/');
+        if (firstIndex === -1) {
+          return separators;
+        }
+        separators.firstIndex = firstIndex;
+
+        const secondIndex = text.indexOf('/', firstIndex + 1);
+        if (secondIndex === -1) {
+          return separators;
+        }
+
+        separators.secondIndex = secondIndex;
+
+        return separators;
+      }
     },
     toControl: (c, v) => c.value = formatters.dateFormatter.format(v),
     toValue: c => parsers.dateParser.parse(c.value),
