@@ -1,3 +1,127 @@
+/**
+ * @typedef BeforeInputParameters
+ * @type {object}
+ * @property {boolean} cancel - true if you want to cancel the input.
+ * @property {string} text - the text of the input.
+ * @property {string} rangeText - the text that will be inserted into the input.
+ * @property {string} type - 
+ * @property {string} selectedText - the selected Text
+ * @property {number} selectionStart - the selectionStart of the input.
+ * @property {number} selectionEnd - the selectionEnd of the input.
+ */
+
+/**
+ * @callback BeforeInputFunction
+ * @param {BeforeInputParameters} p
+ */
+
+/**
+* @callback FocusedFunction
+* @param {HTMLElement} control
+* @param {object?} value
+*/
+
+/**
+ * @typedef ChangingParameters
+ * @type {object}
+ * @property {object} currentValue
+ * @property {object} proposedValue
+ */
+
+/**
+ * @callback ChangingFunction
+ * @param {ChangingParameters} parameters
+ */
+
+/**
+ * @typedef ChangedParameters
+ * @property {object} value
+ * @property {object} prevValue
+ */
+
+/**
+ * @callback ChangedFunction
+ * @param {ChangedParameters} parameters
+ */
+
+/**
+ * @typedef Binding
+ * @property {string} name,
+ * @property {object} model
+ * @property {HTMLElement} control,
+ * @property {BeforeInputFunction} onBeforeInput
+ * @property {FocusedFunction} onFocused
+ * @property {ChangingFunction} onChanging
+ * @property {ChangedFunction} onChanged
+ * @property {ValidateModelFunction} onValidateModel
+ * @property {GetterFunction} getter,
+ * @property {ToControlFunction} toControl,
+ * @property {ToValueFunction} toValue,
+ */
+
+/**
+ * @callback createBindingFunction
+ * @param {string} name
+ * @param {GetterFunction} getter
+ * @param {string} controlId
+ * @param {ChangedFunction} onChanged
+ * @param {ValidateModelFunction} onValidateModel
+ * @returns {Binding}
+ */
+
+/**
+ * @typedef ValidationParameters
+ * @type {object}
+ * @property {object} value
+ * @property {object} modelCopy
+ * @property {object[]} errorsModel
+ */
+
+/**
+ * @callback ValidateModelFunction
+ * @param {ValidationParameters} parameters
+ */
+
+/**
+ * @callback GetterFunction
+ * @param {object} model
+ * @returns {object}
+ */
+
+/**
+ * @callback SetterFunction
+ * @param {object} model
+ * @param {object} value
+ * @param {ChangingFunction} onChanging
+ * @param {ChangedFunction} onChanged
+ * @param {boolean} ignoreOnChange
+ * @returns {void}
+ */
+
+
+/**
+ * @param {GetterFunction} getter 
+ * @returns {SetterFunction}
+ */
+
+/**
+ * @callback ToControlFunction
+ * @param {HTMLElement} control
+ * @param {object} value
+ * @returns {void}
+ */
+
+/**
+ * @callback ToValueFunction
+ * @param {HTMLElement} control
+ * @returns {object} value
+ */
+
+/**
+ * 
+ * @param {GetterFunction} getter 
+ * @returns {SetterFunction}
+ */
 function createSetter(getter) {
   const path = [];
   const proxy = new Proxy({}, {
@@ -32,6 +156,12 @@ function createSetter(getter) {
   return new Function(setterFactoryText)();
 }
 
+/**
+ * 
+ * @param {object} model 
+ * @param {Binding[]} bindings 
+ * @returns {Proxy}
+ */
 function createBindings(model, bindings) {
   if (!Array.isArray(bindings)) {
     bindings = [bindings];
@@ -87,6 +217,10 @@ function createBindings(model, bindings) {
       }
     }; //bindingInstance
 
+
+    /**
+     * @param {FocusEvent} e 
+     */
     const controlBindingEventHandler = function (e) {
       if (bindingInstance.supressBinding) {
         return;
@@ -96,6 +230,9 @@ function createBindings(model, bindings) {
       bindingInstance.toControl(bindingInstance.control, newalue);
     } // controlBindingEventHandler
 
+    /**
+     * @param {FocusEvent} e 
+     */
     const controlFocusEventHandler = function (e) {
       if (bindingInstance.control === e.target && bindingInstance.onFocused) {
         bindingInstance.onFocused(e.target, bindingInstance.getValue());
@@ -105,16 +242,23 @@ function createBindings(model, bindings) {
     /*
       insertText, deleteContentBackward, deleteContentForward, insertFromPaste, and formatBold
     */
+    /**
+     * 
+     * @param {InputEvent} e 
+     * @returns 
+     */
     const controlBeforeInputEventHandler = function (e) {
       if (bindingInstance.onBeforeInput) {
+
+        /** @type {BeforeInputParameters} */
         const beforeInputParameters = {
           cancel: false,
           text: e.target.value,
           rangeText: e.data,
           type: e.inputType,
-          selectedText: e.target.value?.substring(e.target.selectionStart, e.target.selectionEnd),
-          selectionStart: e.target.selectionStart,
-          selectionEnd: e.target.selectionEnd,
+          selectedText: e.target?.value?.substring(e.target.selectionStart, e.target.selectionEnd),
+          selectionStart: e.target?.selectionStart ?? 0,
+          selectionEnd: e.target?.selectionEnd ?? 0,
         };
 
         bindingInstance.onBeforeInput(beforeInputParameters);
@@ -190,6 +334,10 @@ function createBindings(model, bindings) {
     return errors();
   } // validate
 
+  /**
+   * 
+   * @returns {object}
+   */
   function serialize() {
     return this.model;
   }
@@ -236,6 +384,11 @@ const formatters = {
   }),
   dateFormat: /^(?<day>\d{1,2})\/(?<month>\d{1,2})\/(?<year>\d{4})$/,
   dateStringFormatter: {
+    /**
+     * 
+     * @param {string?} dateString 
+     * @returns {string?}
+     */
     format(dateString) {
       const date = parsers.dateParser.parse(dateString);
       if (date === null) {
@@ -245,6 +398,11 @@ const formatters = {
     }
   },
   dateFormatter: {
+    /**
+     * 
+     * @param {Date?} date 
+     * @returns 
+     */
     format(date) {
       if (!(date instanceof Date) || isNaN(date.getTime())) {
         return null;
@@ -291,133 +449,18 @@ const parsers = {
         return null;
       }
       return date;
-    }
+    },
   },
 }
 
-/**
- * 
- * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
- * @returns 
- */
-function createTextBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
-  return {
-    name: name,
-    control: document.getElementById(controlId ?? name),
-    getter: getter,
-    onFocused: (c, v) => c.select(),
-    onBeforeInput: (p) => {
-
-    },
-    toControl: (c, v) => c.value = v,
-    toValue: c => c.value,
-    onChanged: onChanged,
-    onValidateModel: onValidateModel,
-  }
-}
-
-/**
- * 
- * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
- * @returns 
- */
-function createEuroBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
-  return {
-    name: name,
-    control: document.getElementById(controlId ?? name),
-    getter: getter,
-    onFocused: (c, v) => {
-      c.value = c.value?.replace(/[.€]/, '');
-      c.select();
-    },
-    onBeforeInput: (p) => {
-      // if not type nothing let it go
-      if (!p.rangeText) {
-        return;
-      }
-
-      // if dot or comma, check if there is already one
-      if (p.rangeText === '.' || p.rangeText === ',') {
-        if (p.text.indexOf(',') !== -1 && (!p.selectedText || p.selectedText.indexOf(',') === -1)) {
-          p.cancel = true;
-        }
-        else if (p.rangeText === '.') {
-          p.rangeText = ',';
-          p.selectionStart += 1;
-          p.selectionEnd = p.selectionStart;
-        }
-        return;
-      }
-
-      // if not digit, cancel
-      if (!p.rangeText.match(/\d+/)) {
-        p.cancel = true;
-        return;
-      }
-
-      // here is digit only, check if we have more than 2 decimals
-      const commaIndex = p.text.indexOf(',');
-      if (commaIndex != -1) {
-        if (p.selectedText.indexOf(',') === -1 && p.selectionStart > commaIndex) {
-          const decimalsConsumed = (p.selectionStart - (commaIndex + 1)) + (p.text.length - p.selectionEnd);
-          if (decimalsConsumed >= 2) {
-            p.cancel = true;
-          }
-        }
-      }
-    },
-    toControl: (c, v) => c.value = formatters.euroFormatter.format(v),
-    toValue: c => parsers.euroParser.parse(c.value),
-    onChanged: onChanged,
-    onValidateModel: onValidateModel,
-  }
-}
-
-/**
- * 
- * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
- * @returns 
- */
-function createDateStringBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
-
-  return {
-    name: name,
-    control: document.getElementById(controlId ?? name),
-    getter: getter,
-    onFocused: (c, v) => {
-      c.select();
-    },
-    onBeforeInput: (p) => {
-      // if not type nothing let it go
-      if (!p.rangeText) {
-        return;
-      }
-      // TODO: implement date validation
-    },
-    toControl: (c, v) => c.value = formatters.dateStringFormatter.format(v),
-    toValue: c => formatters.dateStringFormatter.format(c.value),
-    onChanged: onChanged,
-    onValidateModel: onValidateModel,
-  }
-}
-
-
-/**
- * 
- * @param {name: string, getter: function, controlId: string, onChanged: function, onValidateModel: function} parameter
- * @returns 
- */
-function createDateBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
-
-  return {
-    name: name,
-    control: document.getElementById(controlId ?? name),
-    getter: getter,
-    onFocused: (c, v) => {
-      c.selectionStart = 0;
-      c.selectionEnd = 2;
-    },
-    onBeforeInput: (p) => {
+const inputHandlers = {
+  date: {
+    /**
+     * 
+     * @param {BeforeInputParameters} p 
+     * @returns 
+     */
+    onBeforeInput: function (p) {
       // if not type nothing let it go
       if (!p.rangeText) {
         return;
@@ -428,8 +471,6 @@ function createDateBinding({ name, getter, controlId, onChanged = null, onValida
       }
 
       const separators = getSeparatorIndexes(p.text);
-      console.log(p.text, separators, p.selectionStart);
-      // TODO: implement date validation
 
       if (p.rangeText === '/') {
         if (p.selectionStart === separators.firstIndex) {
@@ -472,6 +513,121 @@ function createDateBinding({ name, getter, controlId, onChanged = null, onValida
         return separators;
       }
     },
+  },
+  euro: {
+    /**
+     * 
+     * @param {BeforeInputParameters} p 
+     * @returns 
+     */
+    onBeforeInput: (p) => {
+      // if not type nothing let it go
+      if (!p.rangeText) {
+        return;
+      }
+
+      // if dot or comma, check if there is already one
+      if (p.rangeText === '.' || p.rangeText === ',') {
+        if (p.text.indexOf(',') !== -1 && (!p.selectedText || p.selectedText.indexOf(',') === -1)) {
+          p.cancel = true;
+        }
+        else if (p.rangeText === '.') {
+          p.rangeText = ',';
+          p.selectionStart += 1;
+          p.selectionEnd = p.selectionStart;
+        }
+        return;
+      }
+
+      // if not digit, cancel
+      if (!p.rangeText.match(/\d+/)) {
+        p.cancel = true;
+        return;
+      }
+
+      // here is digit only, check if we have more than 2 decimals
+      const commaIndex = p.text.indexOf(',');
+      if (commaIndex != -1) {
+        if (p.selectedText.indexOf(',') === -1 && p.selectionStart > commaIndex) {
+          const decimalsConsumed = (p.selectionStart - (commaIndex + 1)) + (p.text.length - p.selectionEnd);
+          if (decimalsConsumed >= 2) {
+            p.cancel = true;
+          }
+        }
+      }
+    },
+  }
+}
+
+
+/** @type {createBindingFunction} */
+function createTextBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
+  return {
+    name: name,
+    control: document.getElementById(controlId ?? name),
+    getter: getter,
+    onFocused: (c, v) => c.select(),
+    onBeforeInput: (p) => {
+
+    },
+    toControl: (c, v) => c.value = v,
+    toValue: c => c.value,
+    onChanged: onChanged,
+    onValidateModel: onValidateModel,
+  }
+}
+
+
+
+/** @type {createBindingFunction} */
+function createEuroBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
+  return {
+    name: name,
+    control: document.getElementById(controlId ?? name),
+    getter: getter,
+    onFocused: (c, v) => {
+      c.value = c.value?.replace(/[.€]/, '');
+      c.select();
+    },
+    onBeforeInput: inputHandlers.euro.onBeforeInput,
+    toControl: (c, v) => c.value = formatters.euroFormatter.format(v),
+    toValue: c => parsers.euroParser.parse(c.value),
+    onChanged: onChanged,
+    onValidateModel: onValidateModel,
+  }
+}
+
+/** @type {createBindingFunction} */
+function createDateStringBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
+
+  return {
+    name: name,
+    control: document.getElementById(controlId ?? name),
+    getter: getter,
+    onFocused: (c, v) => {
+      c.selectionStart = 0;
+      c.selectionEnd = 2;
+    },
+    onBeforeInput: inputHandlers.date.onBeforeInput,
+    toControl: (c, v) => c.value = formatters.dateStringFormatter.format(v),
+    toValue: c => formatters.dateStringFormatter.format(c.value),
+    onChanged: onChanged,
+    onValidateModel: onValidateModel,
+  }
+}
+
+
+/** @type {createBindingFunction} */
+function createDateBinding({ name, getter, controlId, onChanged = null, onValidateModel = null }) {
+  return {
+    name: name,
+    control: document.getElementById(controlId ?? name),
+    getter: getter,
+    onFocused: (c, v) => {
+      c.selectionStart = 0;
+      c.selectionEnd = 2;
+    },
+    onBeforeInput: inputHandlers.date.onBeforeInput,
     toControl: (c, v) => c.value = formatters.dateFormatter.format(v),
     toValue: c => parsers.dateParser.parse(c.value),
     onChanged: onChanged,

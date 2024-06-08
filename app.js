@@ -2,7 +2,7 @@
 
 const model = {
     id: 1,
-    createDate: null,
+    createDate: '01/11/2080',
     firstName: "Daniel",
     total: null,
     nativeDate: new Date('2050-05-6'),
@@ -27,8 +27,8 @@ proxyModel.subscribe();
 
 const nativeDateControl = document.getElementById('nativeDate');
 
-document.getElementById('check').addEventListener('click', () => {
-    console.log(proxyModel.model);
+document.getElementById('view').addEventListener('click', () => {
+    console.log(JSON.stringify(proxyModel));
 });
 
 document.getElementById('validate').addEventListener('click', () => {
