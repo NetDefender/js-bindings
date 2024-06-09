@@ -1,13 +1,15 @@
 //reference: bindings.js
+//reference: parsers.js
 
 const model = {
     id: 1,
     createDate: '01/11/2080',
     firstName: "Daniel",
-    total: null,
-    nativeDate: new Date('2050-05-6'),
+    total: 587622.36,
+    nativeDate: new Date('2050-5-6'),
 };
 
+/** @type {Binding[]} */
 const bindings = [];
 
 bindings.push(createTextBinding({
@@ -34,15 +36,3 @@ document.getElementById('view').addEventListener('click', () => {
 document.getElementById('validate').addEventListener('click', () => {
     console.log(proxyModel.validate());
 });
-
-// nativeDateControl.addEventListener('input', (e) => {
-//     if (e.target.value) {
-//         const nextCharacter = e.target.value.substring(e.target.selectionStart, e.target.selectionStart + 1);
-//         console.log(nextCharacter);
-//         if (nextCharacter === '/') {
-//             // p.rangeText = `${p.rangeText}/`;
-//             // p.selectionStart += 1;
-//             // p.selectionEnd = p.selectionStart;
-//         }
-//     }
-// })
